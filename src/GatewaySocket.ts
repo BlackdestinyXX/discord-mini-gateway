@@ -37,10 +37,7 @@ export default class GatewaySocket extends EventEmitter {
 	}
 
 	async connect(start: number = 0, end: number) {
-		console.log("Socket connection started")
 		const { url, shards } = await this.getGatewayInfo();
-
-		console.log(url)
 		this.url = url;
 		if (isNaN(this.shards)) {
 			this.shards = shards;

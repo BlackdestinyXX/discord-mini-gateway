@@ -125,13 +125,19 @@ export default class Connection {
 			this.socket.on('message', p((payload: any) => {
 				this.s = payload.s;
 				this.main.emit('PAYLOAD', this.shard, payload);
-				if (payload.op === 11) {
+
+				if(payload.op === 11) {
 					this.acknowledge();
-				} else if (payload.t === 'RESUMED') {
+				}
+
+				if(payload.t === 'RESUMED') {
 					this.main.emit('DEBUG', this.shard, 'successfully resumed');
-				} else if (payload.op === 0) {
+				}
+
+				if(payload.op === 0) {
 					this.main.emit(payload.t, this.shard, payload.d);
 				}
+				
 			}));
 			this.socket.once('message', p((payload: any) => {
 				if (payload.t === 'READY') {
