@@ -1,27 +1,17 @@
-const WebSocket = require('ws');
-const EventEmitter = require('events');
+import { p, e, encoding } from './utils'
+import WebSocket from 'ws'
 
-let p = (func) => {
-	return (data) => {
-		func(JSON.parse(data));
-	}
-}
-let e = JSON.stringify;
-let encoding = 'json';
-try {
-	const erlpack = require('erlpack');
-	p = (func) => {
-		return (data) => {
-			func(erlpack.unpack(data));
-		}
-	}
-	e = erlpack.pack;
-	encoding = 'etf';
-} catch (e) {
-}
+export default class Connection {
+	socket: any;
+	hbinterval: any;
+	hbfunc: any;
+	hbtimer: any
+	s: any;
+	session: any;
+	shard: any;
+	main: any;
 
-class Connection {
-	constructor(main, shard) {
+	constructor(main: any, shard: any) {
 		this.socket = null;
 		this.hbinterval = null;
 		this.hbfunc = null;
@@ -74,22 +64,22 @@ class Connection {
 				this.socket.removeAllListeners('close');
 				this.socket.once('close', () => {
 					this.main.emit('DEBUG', this.shard, 'client closed connection');
-					resolve();
+					resolve('client closed connection');
 				});
 			} else {
-				resolve();
+				resolve('readyState not 3');
 			}
 		});
 	}
 
-	connect(cb) {
+	connect(cb?: any) {
 		this.main.emit('DEBUG', this.shard, 'starting connection packet');
 		return new Promise((resolve, reject) => {
-			this.socket = new WebSocket(this.main.url + '?encoding=' + encoding);
+			this.socket = new WebSocket(this.main.url + '/?v=9&encoding=' + encoding);
 			this.socket.once('open', () => {
 				this.main.emit('DEBUG', this.shard, 'opened connection');
-				this.socket.once('message', p((payload) => {
-					this.main.emit('DEBUG', this.shard, 'recieved heartbeat info ' + JSON.stringify(payload.d));
+				this.socket.once('message', p((payload: any) => {
+					this.main.emit('DEBUG', this.shard, 'received heartbeat info ' + JSON.stringify(payload.d));
 					this.hbinterval = payload.d.heartbeat_interval;
 					this.hbfunc = this.beat;
 					if (this.hbtimer) {
@@ -103,18 +93,18 @@ class Connection {
 					}
 				}));
 			});
-			this.socket.once('close', (code, reason) => {
+			this.socket.once('close', (code: any, reason: string) => {
 				this.main.emit('DEBUG', this.shard, 'server closed connection. code: ' + code + ', reason: ' + reason + ' reconnecting in 10');
 				setTimeout(() => this.close().then(() => this.connect()), 10000);
 			});
-			this.socket.once('error', () => {
-				this.main.emit('DEBUG', this.shard, 'recieved error ' + e.message + ', reconnecting in 5');
+			this.socket.once('error', (error: any) => {
+				this.main.emit('DEBUG', this.shard, 'received error ' + error.message + ', reconnecting in 5');
 				setTimeout(() => this.close().then(() => this.connect()), 5000);
 			});
 		});
 	}
 
-	send(data) {
+	send(data: any) {
 		this.socket.send(e(data));
 	}
 
@@ -132,7 +122,7 @@ class Connection {
 					presence: {}
 				}
 			}));
-			this.socket.on('message', p((payload) => {
+			this.socket.on('message', p((payload: any) => {
 				this.s = payload.s;
 				this.main.emit('PAYLOAD', this.shard, payload);
 				if (payload.op === 11) {
@@ -143,7 +133,7 @@ class Connection {
 					this.main.emit(payload.t, this.shard, payload.d);
 				}
 			}));
-			this.socket.once('message', p((payload) => {
+			this.socket.once('message', p((payload: any) => {
 				if (payload.t === 'READY') {
 					this.session = payload.d.session_id;
 					this.main.emit('DEBUG', this.shard, 'is ready');
@@ -156,59 +146,3 @@ class Connection {
 		});
 	}
 }
-
-class GatewaySocket extends EventEmitter {
-	constructor(token, shards = 'auto') {
-		super();
-		this.token = token;
-		this.shards = shards;
-		this.sockets = new Map();
-		this.lastReady = 0;
-	}
-
-	getGatewayInfo() {
-		return new Promise((resolve, reject) => {
-			require('https').get({
-				hostname: 'discordapp.com',
-				path: '/api/gateway/bot',
-				headers: {
-					Authorization: "Bot " + this.token
-				}
-			}, (res) => {
-				let data = '';
-				res.on('data', (d) => {
-					data += d;
-				});
-				res.on('end', () => {
-					resolve(JSON.parse(data));
-				});
-			}).on('error', reject);
-		});
-	}
-
-	async connect(start = 0, end) {
-		const { url, shards } = await this.getGatewayInfo();
-		this.url = url;
-		if (isNaN(this.shards)) {
-			this.shards = shards;
-		}
-		end = end || this.shards;
-		for (let i = start; i < end; i++) {
-			if (this.sockets.get(i)) {
-				await this.sockets.get(i).close();
-			}
-			this.sockets.set(i, new Connection(this, i));
-			this.lastReady = (await this.sockets.get(i).connect()).timeReady;
-		}
-	}
-
-	send(data, shard = 0) {
-		this.sockets.get(shard).send(data);
-	}
-}
-
-function connectToGateway(token, shards) {
-	return new GatewaySocket(token, shards);
-}
-
-module.exports = connectToGateway;
