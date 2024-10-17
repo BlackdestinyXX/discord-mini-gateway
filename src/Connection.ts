@@ -1,6 +1,8 @@
 import { p, e, encoding } from './utils'
 import WebSocket from 'ws'
 
+// la funzione "e" richiama semplicemente JSON.stringify
+
 export default class Connection {
 	socket: any;
 	hbinterval: any;
@@ -13,7 +15,7 @@ export default class Connection {
 
 	constructor(main: any, shard: any) {
 		this.socket = null;
-		this.hbinterval = null;
+		this.hbinterval = null; // intervallo fra un heartbeat ed un altro
 		this.hbfunc = null;
 		this.hbtimer = null;
 		this.s = -1;
@@ -27,6 +29,7 @@ export default class Connection {
 		this.hbfunc = this.beat;
 	}
 
+	// funzione per inviare un heartbeat in base all'intervallo hbinterval
 	beat() {
 		this.main.emit('DEBUG', this.shard, 'sending hb');
 		this.socket.send(e({
@@ -36,6 +39,8 @@ export default class Connection {
 		this.hbfunc = this.resume;
 	}
 
+	// funzione per eseguire il resume
+	// https://discord.com/developers/docs/topics/gateway#resuming
 	resume() {
 		this.main.emit('DEBUG', this.shard, 'attempting resume');
 		this.close().then(() =>
@@ -53,6 +58,7 @@ export default class Connection {
 		});
 	}
 
+	// chiusura della connessione con il gateway
 	close() {
 		this.main.emit('DEBUG', this.shard, 'client attempting to close connection');
 		if (this.hbtimer) {
@@ -60,7 +66,7 @@ export default class Connection {
 		}
 		return new Promise((resolve, reject) => {
 			if (this.socket.readyState !== 3) {
-				this.socket.close(1001, 'cya later alligator');
+				this.socket.close(1001, 'closed socket connection');
 				this.socket.removeAllListeners('close');
 				this.socket.once('close', () => {
 					this.main.emit('DEBUG', this.shard, 'client closed connection');
@@ -119,6 +125,7 @@ export default class Connection {
 					shard: [this.shard, this.main.shards],
 					compress: false,
 					large_threshold: 250,
+					intents: 131071,
 					presence: {}
 				}
 			}));
@@ -144,7 +151,8 @@ export default class Connection {
 					this.session = payload.d.session_id;
 					this.main.emit('DEBUG', this.shard, 'is ready');
 					resolve({ timeReady: Date.now(), socket: this });
-				} else if (payload.op === 9) {
+				}
+				if (payload.op === 9) {
 					this.main.emit('DEBUG', this.shard, 'invalid session, reconnecting in 5');
 					setTimeout(() => this.close().then(() => this.connect()), 5000);
 				}

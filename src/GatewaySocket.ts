@@ -18,6 +18,9 @@ export default class GatewaySocket extends EventEmitter {
 		this.lastReady = 0;
 	}
 
+	// funzione utilizzata per ottenere i parametri shards e url, che sono rispettivamente
+	// le shards consigliate per la connessione al gateway e l'url per la connessione
+	// https://discord.com/developers/docs/topics/gateway#get-gateway-bot
 	getGatewayInfo(): Promise<any> {
 		return new Promise(async (resolve, reject) => {
 	    	try {
@@ -39,16 +42,14 @@ export default class GatewaySocket extends EventEmitter {
 	async connect(start: number = 0, end: number) {
 		const { url, shards } = await this.getGatewayInfo();
 		this.url = url;
-		if (isNaN(this.shards)) {
-			this.shards = shards;
-		}
+		if (isNaN(this.shards)) this.shards = shards;
 		end = end || this.shards;
-		for (let i = start; i < end; i++) {
-			if (this.sockets.get(i)) {
-				await this.sockets.get(i).close();
+		for (let socket_id = start; socket_id < end; socket_id++) {
+			if (this.sockets.get(socket_id)) {
+				await this.sockets.get(socket_id).close(); // se esistono socket aperti, vengono chiusi
 			}
-			this.sockets.set(i, new Connection(this, i));
-			this.lastReady = (await this.sockets.get(i).connect()).timeReady;
+			this.sockets.set(socket_id, new Connection(this, socket_id)); // creazione connessione socket con id univoco
+			this.lastReady = (await this.sockets.get(socket_id).connect()).timeReady;
 		}
 	}
 
