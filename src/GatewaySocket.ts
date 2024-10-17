@@ -7,15 +7,17 @@ export default class GatewaySocket extends EventEmitter {
 	token: any;
 	shards: any;
 	sockets: any;
+	intents: number;
 	lastReady: any;
 	url: any;
 
-	constructor(token: string, shards: string | number = 'auto') {
+	constructor(token: string, intents: number = 0, shards: string | number = 'auto') {
 		super();
 		this.token = token;
 		this.shards = shards;
 		this.sockets = new Map();
 		this.lastReady = 0;
+		this.intents = intents || 0;
 	}
 
 	// funzione utilizzata per ottenere i parametri shards e url, che sono rispettivamente

@@ -12,6 +12,7 @@ export default class Connection {
 	session: any;
 	shard: any;
 	main: any;
+	intents: number;
 
 	constructor(main: any, shard: any) {
 		this.socket = null;
@@ -22,6 +23,7 @@ export default class Connection {
 		this.session = -1;
 		this.shard = shard;
 		this.main = main;
+		this.intents = main?.intents || 0;
 	}
 
 	acknowledge() {
@@ -125,7 +127,7 @@ export default class Connection {
 					shard: [this.shard, this.main.shards],
 					compress: false,
 					large_threshold: 250,
-					intents: 131071,
+					intents: this.intents,
 					presence: {}
 				}
 			}));
