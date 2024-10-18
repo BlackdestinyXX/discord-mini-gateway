@@ -1,5 +1,5 @@
 import { request } from 'undici';
-
+import WebSocket from 'ws';
 
 interface ClientOptions {
     shards?: number
@@ -25,7 +25,7 @@ export default class Client {
     url: string = '';
 
     constructor({ shards }: ClientOptions = {}) {
-        if(shards) this.shards = shards;
+        if (shards) this.shards = shards;
     }
 
     private async getGatewayBot(): Promise<BotGatewayResponse> {
@@ -36,13 +36,13 @@ export default class Client {
             }
         })
 
-        if(statusCode !== 200) {
+        if (statusCode !== 200) {
             throw new Error('Error while fetching gateway bot endpoint');
         }
 
         const data: BotGatewayResponse = (await body.json()) as BotGatewayResponse;
 
-        if(statusCode == 200) {
+        if (statusCode == 200) {
             this.shards = data.shards;
             this.url = data.url;
         }
@@ -55,7 +55,21 @@ export default class Client {
 
         this.token = token;
 
-        this.getGatewayBot()
-        
+        this.getGatewayBot().then(data => {
+
+            const ws = new WebSocket(data.url + "?v=10&encoding=json");
+
+            ws.on('error', console.error);
+
+            ws.on('open', () => {
+                console.log("Connection started")
+            });
+
+            ws.on('message', (data) => {
+                console.log('received: %s', data);
+            });
+
+        })
+
     }
 }
