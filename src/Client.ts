@@ -1,22 +1,61 @@
 import { request } from 'undici';
 
-class Client {
 
-    token: string = "";
+interface ClientOptions {
+    shards?: number
+}
 
-    costructor(token: string) {
-        this.token = token;
+interface SessionStartLimit {
+    max_concurrency: number,
+    remaining: number,
+    reset_after: number,
+    total: number
+}
+
+interface BotGatewayResponse {
+    url: string,
+    session_start_limit: SessionStartLimit,
+    shards: number
+}
+
+export default class Client {
+
+    token: any;
+    shards: number = 1;
+    url: string = '';
+
+    constructor({ shards }: ClientOptions = {}) {
+        if(shards) this.shards = shards;
     }
 
-    async connect() {
+    private async getGatewayBot(): Promise<BotGatewayResponse> {
 
-        const { statusCode, body } = await request('http://localhost:3000', {
+        const { statusCode, body } = await request('https://discord.com/api/v10/gateway/bot', {
             headers: {
                 'Authorization': `Bot ${this.token}`
             }
         })
 
-        console.log(statusCode, body);
+        if(statusCode !== 200) {
+            throw new Error('Error while fetching gateway bot endpoint');
+        }
+
+        const data: BotGatewayResponse = (await body.json()) as BotGatewayResponse;
+
+        if(statusCode == 200) {
+            this.shards = data.shards;
+            this.url = data.url;
+        }
+
+        return data;
+
+    }
+
+    async connect(token: string) {
+
+        this.token = token;
+
+        this.getGatewayBot()
         
     }
 }
