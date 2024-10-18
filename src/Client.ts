@@ -18,11 +18,19 @@ interface BotGatewayResponse {
     shards: number
 }
 
+interface Payload {
+    op: number,
+    d?: any,
+    s?: number,
+    t?: string,
+}
+
 export default class Client {
 
     token: any;
     shards: number = 1;
     url: string = '';
+    heartbeat_interval: number | null = null;
 
     constructor({ shards }: ClientOptions = {}) {
         if (shards) this.shards = shards;
@@ -65,11 +73,24 @@ export default class Client {
                 console.log("Connection started")
             });
 
-            ws.on('message', (data) => {
-                console.log('received: %s', data);
+            ws.on('message', (data: Payload) => {
+
+                let parsedData = JSON.parse(data.toString())
+
+                switch(parsedData.op) {
+                    case 10:
+                        this.hello(parsedData)
+                    break;
+                }
+
             });
 
         })
 
+    }
+
+    hello(payload: Payload) {
+        if(payload.d.heartbeat_interval) 
+            this.heartbeat_interval = payload.d.heartbeat_interval
     }
 }
