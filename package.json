@@ -17,6 +17,8 @@
   },
   "homepage": "https://github.com/AutomatronDev/pulse#readme",
   "devDependencies": {
+    "@types/node": "^22.7.6",
+    "@types/ws": "^8.5.12",
     "typescript": "^5.6.3"
   },
   "dependencies": {
