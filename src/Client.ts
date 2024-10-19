@@ -3,6 +3,7 @@ import WebSocket from 'ws';
 
 interface ClientOptions {
     shards?: number
+    intents?: number
 }
 
 interface SessionStartLimit {
@@ -29,13 +30,17 @@ export default class Client {
 
     token: any;
     shards: number = 1;
+    intents: number = 0;
     url: string = '';
     heartbeat_interval: number | null = null;
     websocket: WebSocket | null = null;
     last_sequence: number | null = null;
+    resume_gateway_url: string = '';
+    session_id: string = '';
 
-    constructor({ shards }: ClientOptions = {}) {
+    constructor({ shards, intents }: ClientOptions = {}) {
         if (shards) this.shards = shards;
+        if(intents) this.intents = intents;
     }
 
     private async getGatewayBot(): Promise<BotGatewayResponse> {
@@ -100,6 +105,14 @@ export default class Client {
                     case 11:
                         console.log("Heartbeat acknowledged")
                     break;
+                    case 0:
+                        console.log("Received dispatch event: client ready")
+                        this.resume_gateway_url = parsedData.resume_gateway_url
+                        this.session_id = parsedData.session_id
+                    break;
+                    case 9:
+                        console.log("Invalid session")
+                    break;
                 }
 
             });
@@ -112,6 +125,22 @@ export default class Client {
         this.websocket?.send(JSON.stringify({
             op: 1,
             d: this.last_sequence
+        }))
+    }
+
+    identify() {
+        this.websocket?.send(JSON.stringify({
+            op: 2,
+            d: {
+                token: this.token,
+                intents: this.intents,
+                properties: {
+                    os: "linux",
+                    browser: "pulse",
+                    device: "pulse"
+                },
+                shard: [0, this.shards]
+            }
         }))
     }
 
