@@ -106,9 +106,11 @@ export default class Client {
                         console.log("Heartbeat acknowledged")
                     break;
                     case 0:
-                        console.log("Received dispatch event: client ready")
-                        this.resume_gateway_url = parsedData.resume_gateway_url
-                        this.session_id = parsedData.session_id
+                        if(parsedData.t == "READY") {
+                            console.log("Received dispatch event: client ready")
+                            this.resume_gateway_url = parsedData.resume_gateway_url
+                            this.session_id = parsedData.session_id
+                        }
                     break;
                     case 9:
                         console.log("Invalid session")
@@ -151,6 +153,7 @@ export default class Client {
 
             setTimeout(() => {
                 this.beat()
+                this.identify()
             }, this.heartbeat_interval || 1 * jitter)
         }
     }
