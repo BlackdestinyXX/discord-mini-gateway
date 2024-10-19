@@ -31,6 +31,8 @@ export default class Client {
     shards: number = 1;
     url: string = '';
     heartbeat_interval: number | null = null;
+    websocket: WebSocket | null = null;
+    last_sequence: number | null = null;
 
     constructor({ shards }: ClientOptions = {}) {
         if (shards) this.shards = shards;
@@ -59,6 +61,12 @@ export default class Client {
 
     }
 
+    private startHeartbeating() {
+        setInterval(() => {
+            this.beat()
+        }, this.heartbeat_interval || 42000)
+    }
+
     async connect(token: string) {
 
         this.token = token;
@@ -66,6 +74,8 @@ export default class Client {
         this.getGatewayBot().then(data => {
 
             const ws = new WebSocket(data.url + "?v=10&encoding=json");
+
+            this.websocket = ws;
 
             ws.on('error', console.error);
 
@@ -77,9 +87,18 @@ export default class Client {
 
                 let parsedData = JSON.parse(data.toString())
 
+                if(parsedData.s) this.last_sequence = parsedData.s;
+
                 switch(parsedData.op) {
+                    case 1:
+                        this.beat()
+                    break;
                     case 10:
                         this.hello(parsedData)
+                        this.startHeartbeating()
+                    break;
+                    case 11:
+                        console.log("Heartbeat acknowledged")
                     break;
                 }
 
@@ -89,8 +108,21 @@ export default class Client {
 
     }
 
+    beat() {
+        this.websocket?.send(JSON.stringify({
+            op: 1,
+            d: this.last_sequence
+        }))
+    }
+
     hello(payload: Payload) {
-        if(payload.d.heartbeat_interval) 
+        if(payload.d.heartbeat_interval) {
             this.heartbeat_interval = payload.d.heartbeat_interval
+            const jitter = Math.random()
+
+            setTimeout(() => {
+                this.beat()
+            }, this.heartbeat_interval || 1 * jitter)
+        }
     }
 }
