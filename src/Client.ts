@@ -1,3 +1,4 @@
+import { EventEmitter } from 'events';
 import { request } from 'undici';
 import WebSocket from 'ws';
 
@@ -26,7 +27,7 @@ interface Payload {
     t?: string,
 }
 
-export default class Client {
+export default class Client extends EventEmitter {
 
     token: any;
     shards: number = 1;
@@ -39,6 +40,7 @@ export default class Client {
     session_id: string = '';
 
     constructor({ shards, intents }: ClientOptions = {}) {
+        super()
         if (shards) this.shards = shards;
         if (intents) this.intents = intents;
     }
@@ -72,67 +74,73 @@ export default class Client {
         }, this.heartbeat_interval || 42000)
     }
 
+    private emitWebsocketError(error: string, errorCode: string) {
+        this.emit('debug', `${error}: connection closed with code ${errorCode}`)
+    }
+
     private async openConnection(connectionUrl?: string) {
         this.websocket = new WebSocket(connectionUrl || this.url + "?v=10&encoding=json");
 
-        this.websocket.on('error', console.error);
+        this.websocket.on('error', (error) => {
+            this.emit('debug', error)
+        });
 
         this.websocket.on('close', (event) => {
             switch (event) {
                 case 4000:
-                    console.log("Unknown error")
+                    this.emitWebsocketError('Unknown error', "4000")
                     this.resume()
                     break;
                 case 4001:
-                    console.log("Unknown opcode")
+                    this.emitWebsocketError('Unknown opcode', "4001")
                     this.resume()
                     break;
                 case 4002:
-                    console.log("Decode error")
+                    this.emitWebsocketError('Decode error', "4002")
                     this.resume()
                     break;
                 case 4003:
-                    console.log("Not authenticated")
+                    this.emitWebsocketError('Not authenticated', "4003")
                     this.resume()
                     break;
                 case 4004:
-                    console.log("Authentication failed")
+                    this.emitWebsocketError('Authentication failed', "4004")
                     break;
                 case 4005:
-                    console.log("Already authenticated")
+                    this.emitWebsocketError('Already authenticated', "4005")
                     this.resume()
                     break;
                 case 4007: 
-                    console.log("Invalid seq")
+                    this.emitWebsocketError('Invalid seq', "4007")
                     this.resume()
                     break;
                 case 4008:
-                    console.log("Rate limited")
+                    this.emitWebsocketError('Rate limited', "4008")
                     break;
                 case 4009:
-                    console.log("Session timeout")
+                    this.emitWebsocketError('Session timeout', "4009")
                     this.resume()
                     break;
                 case 4010:
-                    console.log("Invalid shard")
+                    this.emitWebsocketError('Invalid shard', "4010")
                     break;
                 case 4011:
-                    console.log("Sharding required")
+                    this.emitWebsocketError('Sharding required', "4011")
                     break;
                 case 4012:
-                    console.log("Invalid API version")
+                    this.emitWebsocketError('Invalid API version', "4012")
                     break;
                 case 4013:
-                    console.log("Invalid intent(s)")
+                    this.emitWebsocketError('Invalid intent(s)', "4013")
                     break;
                 case 4014:
-                    console.log("Disallowed intent(s)")
+                    this.emitWebsocketError('Disallowed intent(s)', "4014")
                     break;
             }
         })
 
         this.websocket.on('open', () => {
-            console.log("Connection started")
+            this.emit('debug', 'Websocket connection started')
         });
 
         this.websocket.on('message', (data: Payload) => {
@@ -150,23 +158,23 @@ export default class Client {
                     this.startHeartbeating()
                     break;
                 case 11:
-                    console.log("Heartbeat acknowledged")
+                    this.emit('debug', 'Heartbeat acknowledged')
                     break;
                 case 0:
+                    this.emit(parsedData.t, parsedData.d)
                     if (parsedData.t == "READY") {
-                        console.log("Received dispatch event: client ready")
                         this.resume_gateway_url = parsedData.resume_gateway_url
                         this.session_id = parsedData.session_id
                     }
                     break;
                 case 9:
-                    console.log("Invalid session")
+                    this.emit('debug', 'Invalid session, received opcode 9')
                     if(parsedData.d == true) {
                         this.resume()
                     }
                     break;
                 case 7:
-                    console.log("Received reconnect event")
+                    this.emit('debug', 'Reconnect required, received opcode 7')
                     this.resume()
                     break;
             }
@@ -187,6 +195,7 @@ export default class Client {
     }
 
     resume() {
+        this.emit('debug', 'Resuming')
         this.openConnection(this.resume_gateway_url).then(() => {
             this.websocket?.send(JSON.stringify({
                 op: 6,
@@ -200,10 +209,12 @@ export default class Client {
     }
 
     disconnect() {
+        this.emit('debug', 'Disconnecting')
         this.websocket?.close(1000, "Disconnecting")
     }
 
     beat() {
+        this.emit('debug', 'Sending heartbeat')
         this.websocket?.send(JSON.stringify({
             op: 1,
             d: this.last_sequence
@@ -211,6 +222,7 @@ export default class Client {
     }
 
     identify() {
+        this.emit('debug', 'Identifying started')
         this.websocket?.send(JSON.stringify({
             op: 2,
             d: {
