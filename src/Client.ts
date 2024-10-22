@@ -1,46 +1,28 @@
 import { EventEmitter } from 'events';
 import { request } from 'undici';
 import WebSocket from 'ws';
-
-interface ClientOptions {
-    shards?: number
-    intents?: number
-}
-
-interface SessionStartLimit {
-    max_concurrency: number,
-    remaining: number,
-    reset_after: number,
-    total: number
-}
-
-interface BotGatewayResponse {
-    url: string,
-    session_start_limit: SessionStartLimit,
-    shards: number
-}
-
-interface Payload {
-    op: number,
-    d?: any,
-    s?: number,
-    t?: string,
-}
+import { ClientOptions, BotGatewayResponse, Payload } from './interfaces';
 
 export default class Client extends EventEmitter {
 
     token: any;
     shards: number = 1;
     intents: number = 0;
-    url: string = '';
-    heartbeat_interval: number | null = null;
-    websocket: WebSocket | null = null;
-    last_sequence: number | null = null;
-    resume_gateway_url: string = '';
-    session_id: string = '';
+    url: string;
+    heartbeat_interval: number | null;
+    websocket: WebSocket | null;
+    last_sequence: number | null;
+    resume_gateway_url: string;
+    session_id: string;
 
     constructor({ shards, intents }: ClientOptions = {}) {
         super()
+        this.heartbeat_interval = null;
+        this.websocket = null;
+        this.last_sequence = null;
+        this.url = '';
+        this.resume_gateway_url = '';
+        this.session_id = '';
         if (shards) this.shards = shards;
         if (intents) this.intents = intents;
     }
