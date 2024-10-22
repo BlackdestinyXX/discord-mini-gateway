@@ -31,7 +31,7 @@ export default class GatewayConnection {
     }
 
     async openConnection(connectionUrl?: string) {
-        this.websocket = new WebSocket(connectionUrl || this.client.url + "?v=10&encoding=json");
+        this.websocket = new WebSocket(connectionUrl || this.client.url + '?v=10&encoding=json');
 
         this.websocket.on('error', (error) => {
             this.client.emit('debug', error);
@@ -40,53 +40,53 @@ export default class GatewayConnection {
         this.websocket.on('close', (event) => {
             switch (event) {
                 case 4000:
-                    this.emitWebsocketError('Unknown error', "4000");
+                    this.emitWebsocketError('Unknown error', '4000');
                     this.resume();
                     break;
                 case 4001:
-                    this.emitWebsocketError('Unknown opcode', "4001");
+                    this.emitWebsocketError('Unknown opcode', '4001');
                     this.resume();
                     break;
                 case 4002:
-                    this.emitWebsocketError('Decode error', "4002");
+                    this.emitWebsocketError('Decode error', '4002');
                     this.resume();
                     break;
                 case 4003:
-                    this.emitWebsocketError('Not authenticated', "4003");
+                    this.emitWebsocketError('Not authenticated', '4003');
                     this.resume();
                     break;
                 case 4004:
-                    this.emitWebsocketError('Authentication failed', "4004");
+                    this.emitWebsocketError('Authentication failed', '4004');
                     break;
                 case 4005:
-                    this.emitWebsocketError('Already authenticated', "4005");
+                    this.emitWebsocketError('Already authenticated', '4005');
                     this.resume();
                     break;
                 case 4007:
-                    this.emitWebsocketError('Invalid seq', "4007");
+                    this.emitWebsocketError('Invalid seq', '4007');
                     this.resume();
                     break;
                 case 4008:
-                    this.emitWebsocketError('Rate limited', "4008");
+                    this.emitWebsocketError('Rate limited', '4008');
                     break;
                 case 4009:
-                    this.emitWebsocketError('Session timeout', "4009");
+                    this.emitWebsocketError('Session timeout', '4009');
                     this.resume();
                     break;
                 case 4010:
-                    this.emitWebsocketError('Invalid shard', "4010");
+                    this.emitWebsocketError('Invalid shard', '4010');
                     break;
                 case 4011:
-                    this.emitWebsocketError('Sharding required', "4011");
+                    this.emitWebsocketError('Sharding required', '4011');
                     break;
                 case 4012:
-                    this.emitWebsocketError('Invalid API version', "4012");
+                    this.emitWebsocketError('Invalid API version', '4012');
                     break;
                 case 4013:
-                    this.emitWebsocketError('Invalid intent(s)', "4013");
+                    this.emitWebsocketError('Invalid intent(s)', '4013');
                     break;
                 case 4014:
-                    this.emitWebsocketError('Disallowed intent(s)', "4014");
+                    this.emitWebsocketError('Disallowed intent(s)', '4014');
                     break;
             }
         });
@@ -96,7 +96,7 @@ export default class GatewayConnection {
         });
 
         this.websocket.on('message', (data: Payload) => {
-            let parsedData = JSON.parse(data.toString());
+            const parsedData = JSON.parse(data.toString());
 
             if (parsedData.s) this.last_sequence = parsedData.s;
 
@@ -113,7 +113,7 @@ export default class GatewayConnection {
                     break;
                 case 0:
                     this.client.emit(parsedData.t, parsedData.d);
-                    if (parsedData.t == "READY") {
+                    if (parsedData.t == 'READY') {
                         this.resume_gateway_url = parsedData.resume_gateway_url;
                         this.session_id = parsedData.session_id;
                     }
@@ -148,7 +148,7 @@ export default class GatewayConnection {
 
     disconnect() {
         this.client.emit('debug', 'Disconnecting');
-        this.websocket?.close(1000, "Disconnecting");
+        this.websocket?.close(1000, 'Disconnecting');
     }
 
     beat() {
@@ -167,9 +167,9 @@ export default class GatewayConnection {
                 token: this.client.token,
                 intents: this.client.intents,
                 properties: {
-                    os: "linux",
-                    browser: "pulse",
-                    device: "pulse"
+                    os: 'linux',
+                    browser: 'pulse',
+                    device: 'pulse'
                 },
                 shard: [0, this.client.shards]
             }

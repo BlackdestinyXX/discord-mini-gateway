@@ -5,7 +5,7 @@ import GatewayConnection from './GatewayConnection';
 
 export default class Client extends EventEmitter {
 
-    token: any;
+    token: string;
     shards: number = 1;
     intents: number = 0;
     url: string;
@@ -13,6 +13,7 @@ export default class Client extends EventEmitter {
 
     constructor({ shards, intents }: ClientOptions = {}) {
         super();
+        this.token = '';
         this.url = '';
         this.gatewayConnection = new GatewayConnection(this);
         if (shards) this.shards = shards;
